@@ -8,3 +8,19 @@ Reference implementations of several Block Conjugate-Gradient iterative solvers 
 
 ## Multishift Block Solvers
 - SBCGrQ
+
+## Use
+To compile the code in debug mode and run the tests:
+```
+mkdir Debug
+cd Debug
+cmake ..
+make
+```
+Alternatively to compile an optimised version:
+```
+mkdir Release
+cd Release
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make
+```
