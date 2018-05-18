@@ -1,0 +1,30 @@
+dist: trusty
+sudo: required
+notifications:
+  email: false
+language:
+  - cpp
+compiler:
+  - gcc
+
+addons:
+  apt:
+    packages:
+      - lcov
+
+script:
+  - mkdir Debug
+  - cd Debug
+  - cmake -DCMAKE_BUILD_TYPE=Debug .. && make tests -j4
+  - cd ../
+  - mkdir Release
+  - cd Release
+  - cmake -DCMAKE_BUILD_TYPE=Release .. && make tests -j4
+  - cd ../
+
+after_success:
+  - cd Debug
+  - lcov --directory . --capture --output-file coverage.info
+  - lcov --remove coverage.info '/usr/*' '*/inc/Eigen3/*' '*/catch/*' '*/test/*' --output-file coverage.info
+  - lcov --list coverage.info
+  - bash <(curl -s https://codecov.io/bash) -X gcov
