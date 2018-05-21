@@ -5,7 +5,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -std=c++11")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -DEIGEN_NO_DEBUG")
 
 # if the environment variable $MKLROOT is defined, then link with MKL
@@ -39,4 +39,4 @@ target_link_libraries(tests Catch)
 add_test(NAME Addition COMMAND tests)
 
 #Make running the unit tests part of the build, so failed test = failed build
-#add_custom_command(TARGET tests POST_BUILD COMMAND tests -d yes)
+add_custom_command(TARGET tests POST_BUILD COMMAND tests -s -d yes)
