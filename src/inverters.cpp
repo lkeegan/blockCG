@@ -2,30 +2,29 @@
 #include <iostream>
 
 // CG inversion of A x = b
-int CG (field<fermion>& x, const field<fermion>& b, double eps) {	
-	std::complex<double> beta;
-	double alpha;
-	// initial guess x=0
+int CG (fermion_field& x, const fermion_field& b, double eps) {	
+	double alpha, beta;
+	// initial guess x = 0
 	x.setZero();
-	field<fermion> ax (x);
-	field<fermion> r (b);
-	field<fermion> p (b);
-	double r2 = r.squaredNorm();
+	fermion_field ap (x);
+	fermion_field r (b);
+	fermion_field p (b);
+	double r2 = r.dot(r);
 	double r2_old;
 	int iter = 0;
 	eps *= sqrt(r2);
-	// do while | Ax - b| > |b| eps
+	// do while |Ax - b| > |b| eps
 	while (sqrt(r2) > eps)
 	{
-		// ax = A p
-		dirac_op (ax, p);
+		// ap = A p
+		dirac_op (ap, p);
 		++iter;
-		// beta = -<r|r> / <p|ax>
-		beta = -r2 / p.dot(ax);
-		// r += beta ax
-		r.add(ax, beta);
+		// beta = -r.r / p.ap
+		beta = -r2 / p.dot(ap);
+		// r += beta ap
+		r.add(ap, beta);
 		r2_old = r2;
-		r2 = r.squaredNorm();
+		r2 = r.dot(r);
 		alpha = r2 / r2_old;
 		// x += -beta * p
 		x.add(p, -beta);
@@ -36,7 +35,7 @@ int CG (field<fermion>& x, const field<fermion>& b, double eps) {
 }
 
 // SCG inversion of (A + sigma_i) x_i = b
-int SCG (std::vector<field<fermion>>& x, const field<fermion>& b, std::vector<double>& sigma, double eps, double eps_shifts) {
+int SCG (std::vector<fermion_field>& x, const fermion_field& b, std::vector<double>& sigma, double eps, double eps_shifts) {
 	int n_shifts = x.size();
 	int n_unconverged_shifts = n_shifts;
 	std::vector<std::complex<double>> beta(n_shifts, 0.0), beta_m1(n_shifts, 1.0);
@@ -46,26 +45,26 @@ int SCG (std::vector<field<fermion>>& x, const field<fermion>& b, std::vector<do
 	for(int i_shift=0; i_shift<n_shifts; ++i_shift) {
 		x[i_shift].setZero();
 	}
-	std::vector<field<fermion>> p(n_shifts, b);
-	field<fermion> ax(x[0]), r(b);
+	std::vector<fermion_field> p(n_shifts, b);
+	fermion_field ap(x[0]), r(b);
 
-	double r2 = r.squaredNorm();
+	double r2 = r.dot(r);
 	double r2_old;
 	int iter = 0;
 	eps *= sqrt(r2);
 	while (sqrt(r2) > eps)
 	{
-		// ax = (A + sigma_0) p_0
-		dirac_op (ax, p[0]);
-		ax.add(p[0], sigma[0]);
+		// ap = (A + sigma_0) p_0
+		dirac_op (ap, p[0]);
+		ap.add(p[0], sigma[0]);
 		++iter;
-		// beta = -<r|r>/<p|a>
-		beta[0] = -r2 / p[0].dot(ax);
+		// beta = -<r|r>/<p_0|(A+sigma_0)p_0>
+		beta[0] = -r2 / p[0].dot(ap);
 		// r += beta_0 a
-		r.add(ax, beta[0]);
+		r.add(ap, beta[0]);
 		// r2_new = <r|r>
 		r2_old = r2;
-		r2 = r.squaredNorm();
+		r2 = r.dot(r);
 		// calculate alpha, zeta and beta coefficients for shifted vectors
 		// see arXiv:hep-lat/9612014 for derivation
 		// TODO rewrite in similar as possible form to SBCGrQ

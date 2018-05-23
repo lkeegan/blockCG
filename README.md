@@ -6,7 +6,7 @@ Reference implementations of several Block Conjugate-Gradient iterative solvers 
 - SCG
 
 ## Block Solvers
-- BCG [todo]
+- BCG
 - BCGrQ [todo]
 - ...
 

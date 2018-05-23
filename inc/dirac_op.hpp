@@ -8,7 +8,7 @@
 // with adjustable condition number
 // https://www.researchgate.net/publication/230538536_Tridiagonal_Toeplitz_matrices_Properties_and_novel_applications
 template <int N_rhs>
-void dirac_op(field< block_fermion<N_rhs> >& lhs, const field< block_fermion<N_rhs> >& rhs, double condition_number = 1e2, double phase = 0.86) {
+void dirac_op(block_fermion_field<N_rhs>& lhs, const block_fermion_field<N_rhs>& rhs, double condition_number = 1e2, double phase = 0.86) {
 	// tri-diagonal Hermitian Toeplitz matrix (tau*, 0.5, tau)
 	// with tau = (0.25 - 0.5/condition_number) exp (i phase)
 	// eigenvalues lie in range [0.5 - 2|tau|, 0.5 + 2|tau|] ~ [1/condition_number, 1]

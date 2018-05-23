@@ -1,16 +1,19 @@
 #ifndef LKEEGAN_BLOCKCG_FIELDS_H
 #define LKEEGAN_BLOCKCG_FIELDS_H
 
+// Define data structure for block fermion fields:
+
+// "fermion" - 12-component complex vector
+// "block_fermion<N_rhs>" - (12 x N_rhs) complex matrix, i.e. N_rhs x "fermion" vectors 
+// "block_matrix<N_rhs>" - (N_rhs x N_rhs) complex matrix
+
+// "fermion_field(V)" - a V-component field of "fermion"
+// "block_fermion_field<N_rhs>(V)" - a V-component field of "block_fermion<N_rhs>"
+
 #include <vector>
 #include <complex>
 #include "Eigen3/Eigen/Dense"
 #include "Eigen3/Eigen/StdVector"
-
-// Define data structure for block fermion fields:
-// "fermion" - 12-component complex vector
-// "block_fermion<N_rhs>" - (12 x N_rhs) complex matrix, i.e. N_rhs x "fermion" vectors 
-// "field<T>(V)" - a V-component field of type T, where T could be e.g. block_matrix<4>
-// "block_matrix<N_rhs>" - (N_rhs x N_rhs) complex matrix
 
 constexpr int N_fermion_dof = 12;
 template <int N_rhs>
@@ -19,18 +22,18 @@ typedef block_fermion<1> fermion;
 template <int N_rhs>
 using block_matrix = Eigen::Matrix<std::complex<double>, N_rhs, N_rhs>;
 
-template<typename T> class field {
+template<int N_rhs> class block_fermion_field {
 protected:
-	std::vector<T, Eigen::aligned_allocator<T>> data_;
+	std::vector<block_fermion<N_rhs>, Eigen::aligned_allocator<block_fermion<N_rhs>>> data_;
 
 public:
 	int V;
 
-	explicit field (int V) : V(V) {
+	explicit block_fermion_field (int V) : V(V) {
 		data_.resize(V);
 	}
 
-	field& operator=(const field& rhs) {
+	block_fermion_field<N_rhs>& operator=(const block_fermion_field<N_rhs>& rhs) {
 		V = rhs.V;
 		data_.resize(V);
 		for(int ix=0; ix<V; ++ix) {
@@ -38,7 +41,7 @@ public:
 		}
 		return *this;
 	}
-	field& operator-=(const field& rhs)
+	block_fermion_field<N_rhs>& operator-=(const block_fermion_field<N_rhs>& rhs)
 	{
 		for(int ix=0; ix<V; ++ix) {
 			data_[ix] -= rhs[ix];
@@ -47,24 +50,24 @@ public:
 	}
 
 	// [i] operator returns data with index i
-	T& operator[](int i) { return data_[i]; }
-	const T& operator[](int i) const { return data_[i]; }
+	block_fermion<N_rhs>& operator[](int i) { return data_[i]; }
+	const block_fermion<N_rhs>& operator[](int i) const { return data_[i]; }
 
 	// these are some eigen routines for individual vectors or matrices
 	// trivially extended by applying them to each element in the field in turn
 	// this += rhs * rhs_multiplier
 	template<typename Targ>
-	field& add(const field& rhs, const Targ& rhs_multiplier)
+	block_fermion_field<N_rhs>& add(const block_fermion_field<N_rhs>& rhs, const Targ& rhs_multiplier)
 	{
 		for(int ix=0; ix<V; ++ix) {
 			data_[ix].noalias() += rhs[ix] * rhs_multiplier;
 		}
 	    return *this;
 	}
-	template<typename Targ>
-	field& rescale_add(const Targ& lhs_multiplier, const field& rhs, const Targ& rhs_multiplier)
+	template<typename T_lhs_arg, typename T_rhs_arg>
+	block_fermion_field<N_rhs>& rescale_add(const T_lhs_arg& lhs_multiplier, const block_fermion_field<N_rhs>& rhs, const T_rhs_arg& rhs_multiplier)
 	{
-		T tmp;
+		block_fermion<N_rhs> tmp;
 		for(int ix=0; ix<V; ++ix) {
 			tmp.noalias() = data_[ix] * lhs_multiplier;
 			tmp.noalias() += rhs[ix] * rhs_multiplier;
@@ -82,22 +85,57 @@ public:
 			data_[ix].setRandom();
 		}
 	}
-	// equivalent to real part of dot product with itself i.e. l2-norm squared
-	double squaredNorm() const {
-		double norm = 0.0;
+	//real part of complex conjugate of this dotted with rhs
+	double dot (const block_fermion_field<1>& rhs) const {
+		double sum = 0.0;
 		for(int ix=0; ix<V; ++ix) {
-			norm += data_[ix].squaredNorm();
-		}
-		return norm;		
-	}
-	//complex conjugate of this dotted with rhs
-	std::complex<double> dot (const field& rhs) const {
-		std::complex<double> sum (0.0, 0.0);
-		for(int ix=0; ix<V; ++ix) {
-			sum += data_[ix].dot(rhs[ix]);
+			sum += data_[ix].dot(rhs[ix]).real();
 		}
 		return sum;		
 	}
+	block_matrix<N_rhs> hermitian_dot(const block_fermion_field<N_rhs>& rhs) const {
+		// construct lower-triangular part of matrix
+		block_matrix<N_rhs> R;
+		R.setZero();
+		for(int ix=0; ix<V; ++ix) {
+			for(int i=0; i<N_rhs; ++i) {
+				for(int j=0; j<=i; ++j) {
+					R(i, j) += data_[ix].col(i).dot(rhs[ix].col(j));
+				}
+			}
+		}
+		// reconstruct upper triangular part from conjugate of lower triangular elements
+		for(int i=0; i<N_rhs; ++i) {
+			for(int j=0; j<=i; ++j) {
+				R(j, i) = std::conj(R(i, j));
+			}
+		}
+		return R;
+	}
+	// In-place Multiply field X on RHS by inverse of triangular matrix R, i.e.
+	// X <- X R^{-1}
+	block_fermion_field<N_rhs>& multiply_triangular_inverse_RHS(const block_matrix<N_rhs>& R) {
+		for(int ix=0; ix<V; ++ix) {
+			for(int i=0; i<N_rhs; ++i) {
+				for(int j=0; j<i; ++j) {
+					data_[ix].col(i) -= R(j,i) * data_[ix].col(j);
+				}
+				data_[ix].col(i) /= R(i,i);
+			}
+		}
+		return *this;
+	}
+	block_fermion_field<N_rhs>& thinQR(block_matrix<N_rhs>& R) {
+		// Construct R_ij = Q_i^dag Q_j = hermitian, 
+		R = hermitian_dot(*this);
+		// Find upper triangular R such that R^dag R = H (i.e. previous contents of R) = Q^dag Q
+		// i.e. adjoint of cholesky decomposition L matrix: L L^dag = H
+		R = R.llt().matrixL().adjoint();
+		// Q <- Q R^-1
+		multiply_triangular_inverse_RHS(R);
+	}
+
 };
+typedef block_fermion_field<1> fermion_field;
 
 #endif //LKEEGAN_BLOCKCG_FIELDS_H
