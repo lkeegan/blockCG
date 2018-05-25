@@ -75,6 +75,21 @@ public:
 		}
 	    return *this;
 	}
+	template<typename T_lhs_arg, typename T_rhs_arg>
+	block_fermion_field<N_rhs>& upper_triangular_rescale_add(const T_lhs_arg& lhs_multiplier, const block_fermion_field<N_rhs>& rhs, const T_rhs_arg& rhs_multiplier)
+	{
+		// this <- this * lhs_multipler + rhs * rhs_multiplier [for upper triangular lhs_multiplier]
+		for(int ix=0; ix<V; ++ix) {
+			for(int i=N_rhs-1; i>=0; --i) {
+				data_[ix].col(i) *= lhs_multiplier(i,i);
+				for(int j=i-1; j>=0; --j) {
+					data_[ix].col(i) += rhs_multiplier(j,i) * data_[ix].col(j);
+				}
+				data_[ix].col(i) += rhs[ix].col(i);
+			}
+		}
+		return *this;
+	}
 	void setZero() {
 		for(int ix=0; ix<V; ++ix) {
 			data_[ix].setZero();

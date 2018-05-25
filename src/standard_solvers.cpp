@@ -1,7 +1,7 @@
 #include "standard_solvers.hpp"
 
 // CG inversion of A x = b
-int CG (fermion_field& x, const fermion_field& b, double eps) {	
+int CG (fermion_field& x, const fermion_field& b, double eps, int max_iterations) {	
 	// initial guess x = 0
 	x.setZero();
 	fermion_field t (x);
@@ -12,7 +12,7 @@ int CG (fermion_field& x, const fermion_field& b, double eps) {
 	int iter = 0;
 	eps *= sqrt(r2);
 	// do while |Ax - b| > |b| eps
-	while (sqrt(r2) > eps)
+	while (sqrt(r2) > eps && iter < max_iterations)
 	{
 		// p = p alpha + r
 		p.rescale_add(alpha, r, 1.0);
@@ -33,7 +33,7 @@ int CG (fermion_field& x, const fermion_field& b, double eps) {
 }
 
 // SCG inversion of (A + sigma_i) x_i = b
-int SCG (std::vector<fermion_field>& x, const fermion_field& b, std::vector<double>& sigma, double eps, double eps_shifts) {
+int SCG (std::vector<fermion_field>& x, const fermion_field& b, std::vector<double>& sigma, double eps, double eps_shifts, int max_iterations) {
 	int n_shifts = x.size();
 	int n_unconverged_shifts = n_shifts;
 	std::vector<std::complex<double>> beta(n_shifts, 0.0), beta_m1(n_shifts, 1.0);
@@ -50,7 +50,7 @@ int SCG (std::vector<fermion_field>& x, const fermion_field& b, std::vector<doub
 	double r2_old;
 	int iter = 0;
 	eps *= sqrt(r2);
-	while (sqrt(r2) > eps)
+	while (sqrt(r2) > eps && iter < max_iterations)
 	{
 		// ap = (A + sigma_0) p_0
 		dirac_op (ap, p[0]);

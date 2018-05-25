@@ -8,7 +8,7 @@
 // stops iterating when |DX^i - B^i| / | B^i | < eps for all vectors i
 // returns number of times Dirac operator D was called
 template<int N_rhs>
-int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, double eps = 1.e-15) {
+int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, double eps = 1.e-15, int max_iterations = 1e4) {
 	// initial guess x = 0
 	X.setZero();
 	block_fermion_field<N_rhs> T (X);
@@ -22,7 +22,7 @@ int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, dou
 
 	int iter = 0;
 	// do while Max_j{ |Ax_j - b_j|/|b_j| } > eps
-	while ((r2.diagonal().real().array().sqrt()/residual_norms).maxCoeff() > eps)
+	while ((r2.diagonal().real().array().sqrt()/residual_norms).maxCoeff() > eps && iter < max_iterations)
 	{
 		// P = P alpha + R
 		P.rescale_add(alpha, R, 1.0);
@@ -47,25 +47,25 @@ int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, dou
 // stops iterating when |DX^i - B^i| / | B^i | < eps for all vectors i
 // returns number of times Dirac operator D was called
 template<int N_rhs>
-int BCGrQ (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, double eps = 1.e-15) {
+int BCGrQ (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, double eps = 1.e-15, int max_iterations = 1e4) {
 	// initial guess x = 0
 	X.setZero();
 	block_fermion_field<N_rhs> T (X);
 	block_fermion_field<N_rhs> P (X);
 	block_fermion_field<N_rhs> R (B);
 	block_matrix<N_rhs> delta;
-	// {R, delta} <- QR-decomposition of residuals R
+	// {R, delta} <- QR(R)
 	R.thinQR(delta);
 	block_matrix<N_rhs> alpha = block_matrix<N_rhs>::Identity();
 	block_matrix<N_rhs> beta;
 	// |residual_i| = sqrt(\sum_j R_i^dag R_j) = sqrt(\sum_j delta_ij)
-	Eigen::Array<double,N_rhs,1> residual_norms = delta.rowwise().norm().array().sqrt();
+	Eigen::Array<double,N_rhs,1> residual_norms = delta.rowwise().norm().array();
 	int iter = 0;
 	// do while Max_j{ |Ax_j - b_j|/|b_j| } > eps
-	while ((delta.rowwise().norm().array().sqrt()/residual_norms).maxCoeff() > eps)
+	while ((delta.rowwise().norm().array()/residual_norms).maxCoeff() > eps && iter < max_iterations)
 	{
-		// P = P alpha + R
-		P.rescale_add(alpha.adjoint(), R, 1.0);
+		// P = P alpha^{\dagger} + R [where alpha^{\dagger} is upper triangular]
+		P.upper_triangular_rescale_add(alpha.adjoint().eval(), R, block_matrix<N_rhs>::Identity());
 		// T = A P
 		dirac_op (T, P);
 		++iter;
