@@ -9,35 +9,36 @@
 // returns number of times Dirac operator D was called
 template<int N_rhs>
 int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, double eps = 1.e-15) {
-	block_matrix<N_rhs> alpha, beta, pap;
 	// initial guess x = 0
 	X.setZero();
-	block_fermion_field<N_rhs> AP (X);
+	block_fermion_field<N_rhs> T (X);
+	block_fermion_field<N_rhs> P (X);
 	block_fermion_field<N_rhs> R (B);
-	block_fermion_field<N_rhs> P (B);
 	block_matrix<N_rhs> r2 = R.hermitian_dot(R);
-	block_matrix<N_rhs> r2_old = r2;
+	block_matrix<N_rhs> alpha = r2;
+	block_matrix<N_rhs> beta;
+	block_matrix<N_rhs> r2_old;
 	Eigen::Array<double,N_rhs,1> b_norms = r2.diagonal().real().array().sqrt();
 
 	int iter = 0;
 	// do while Max_j{ |Ax_j - b_j|/|b_j| } > eps
 	while ((r2.diagonal().real().array().sqrt()/b_norms).maxCoeff() > eps)
 	{
-		// AP = A P
-		dirac_op (AP, P);
+		// P = P alpha + R
+		P.rescale_add(alpha, R, 1.0);
+		// T = A P
+		dirac_op (T, P);
 		++iter;
-		// beta = -r.r / p.ap
-		pap = P.hermitian_dot(AP);
-		beta = -pap.ldlt().solve(r2);
-		// R += AP beta
-		R.add(AP, beta);
+		// beta = (P.T)^-1 (R.R)
+		// use LDL^T Cholesky decomposition to invert hermitian matrix (P.T)^-1
+		beta = (P.hermitian_dot(T)).ldlt().solve(r2);
+		// R -= T beta
+		R.add(T, -beta);
+		// X += P beta
+		X.add(P, beta);
 		r2_old = r2;
 		r2 = R.hermitian_dot(R);
 		alpha = r2_old.ldlt().solve(r2);
-		// X -= P beta
-		X.add(P, -beta);
-		// P = P alpha + R
-		P.rescale_add(alpha, R, 1.0);
 	}
 	return iter;
 
