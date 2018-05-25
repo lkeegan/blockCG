@@ -7,7 +7,7 @@ Reference implementations of several Block Conjugate-Gradient iterative solvers 
 
 ## Block Solvers
 - BCG
-- BCGrQ [todo]
+- BCGrQ
 - ...
 
 ## Multishift Block Solvers

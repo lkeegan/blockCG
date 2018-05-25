@@ -133,6 +133,7 @@ public:
 		R = R.llt().matrixL().adjoint();
 		// Q <- Q R^-1
 		multiply_triangular_inverse_RHS(R);
+		return *this;
 	}
 
 };

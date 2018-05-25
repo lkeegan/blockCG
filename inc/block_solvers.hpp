@@ -5,7 +5,7 @@
 #include "dirac_op.hpp"
 
 // BCG inversion of D X = b
-// stops iterating when |DX - B| / | B | < eps
+// stops iterating when |DX^i - B^i| / | B^i | < eps for all vectors i
 // returns number of times Dirac operator D was called
 template<int N_rhs>
 int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, double eps = 1.e-15) {
@@ -18,11 +18,11 @@ int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, dou
 	block_matrix<N_rhs> alpha = r2;
 	block_matrix<N_rhs> beta;
 	block_matrix<N_rhs> r2_old;
-	Eigen::Array<double,N_rhs,1> b_norms = r2.diagonal().real().array().sqrt();
+	Eigen::Array<double,N_rhs,1> residual_norms = r2.diagonal().real().array().sqrt();
 
 	int iter = 0;
 	// do while Max_j{ |Ax_j - b_j|/|b_j| } > eps
-	while ((r2.diagonal().real().array().sqrt()/b_norms).maxCoeff() > eps)
+	while ((r2.diagonal().real().array().sqrt()/residual_norms).maxCoeff() > eps)
 	{
 		// P = P alpha + R
 		P.rescale_add(alpha, R, 1.0);
@@ -39,6 +39,47 @@ int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, dou
 		r2_old = r2;
 		r2 = R.hermitian_dot(R);
 		alpha = r2_old.ldlt().solve(r2);
+	}
+	return iter;
+}
+
+// BCGrQ inversion of D X = b
+// stops iterating when |DX^i - B^i| / | B^i | < eps for all vectors i
+// returns number of times Dirac operator D was called
+template<int N_rhs>
+int BCGrQ (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, double eps = 1.e-15) {
+	// initial guess x = 0
+	X.setZero();
+	block_fermion_field<N_rhs> T (X);
+	block_fermion_field<N_rhs> P (X);
+	block_fermion_field<N_rhs> R (B);
+	block_matrix<N_rhs> delta;
+	// {R, delta} <- QR-decomposition of residuals R
+	R.thinQR(delta);
+	block_matrix<N_rhs> alpha = block_matrix<N_rhs>::Identity();
+	block_matrix<N_rhs> beta;
+	// |residual_i| = sqrt(\sum_j R_i^dag R_j) = sqrt(\sum_j delta_ij)
+	Eigen::Array<double,N_rhs,1> residual_norms = delta.rowwise().norm().array().sqrt();
+	int iter = 0;
+	// do while Max_j{ |Ax_j - b_j|/|b_j| } > eps
+	while ((delta.rowwise().norm().array().sqrt()/residual_norms).maxCoeff() > eps)
+	{
+		// P = P alpha + R
+		P.rescale_add(alpha.adjoint(), R, 1.0);
+		// T = A P
+		dirac_op (T, P);
+		++iter;
+		// beta = (P.T)^-1 (R.R)
+		// use LDL^T Cholesky decomposition to invert hermitian matrix (P.T)^-1
+		beta = (P.hermitian_dot(T)).ldlt().solve(block_matrix<N_rhs>::Identity());
+		// R -= T beta
+		R.add(T, -beta);
+		//{R, alpha} <- QR(R)
+		R.thinQR(alpha);
+		// X += P beta delta
+		beta = beta * delta;
+		X.add(P, beta);
+		delta = alpha * delta;
 	}
 	return iter;
 
