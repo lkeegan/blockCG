@@ -1,10 +1,9 @@
 #include "catch.hpp"
-#include "inverters.hpp"
-
-int V = 512;
-double stopping_criterion = 1.e-10;
+#include "standard_solvers.hpp"
 
 TEST_CASE( "CG", "[standard_solvers]") {
+	int V = 128;
+	double stopping_criterion = 1.e-10;
 	fermion_field x(V), b(V), Ax(V);
 	b.setRandom();
 	int iterations = CG(x, b, stopping_criterion);
@@ -18,6 +17,8 @@ TEST_CASE( "CG", "[standard_solvers]") {
 }
 
 TEST_CASE( "SCG", "[standard_solvers]") {
+	int V = 128;
+	double stopping_criterion = 1.e-10;
 	std::vector<double> shifts = {0.01, 0.05, 0.20};
 	int N_shifts = shifts.size();
 	fermion_field b(V), Ax(V);
@@ -33,26 +34,6 @@ TEST_CASE( "SCG", "[standard_solvers]") {
 		CAPTURE(shift);
 		CAPTURE(stopping_criterion);
 		CAPTURE(iterations);
-		CAPTURE(residual);
-		REQUIRE( residual < 2 * stopping_criterion );		
-	}
-}
-
-TEST_CASE( "BCG", "[block_solvers]") {
-	constexpr int N_rhs = 3;
-	block_fermion_field<N_rhs> X(V), B(V), AX(V);
-	B.setRandom();
-	int iterations = BCG(X, B, stopping_criterion);
-	dirac_op(AX, X);
-	AX -= B;
-	block_matrix<N_rhs> r2 = AX.hermitian_dot(AX);
-	block_matrix<N_rhs> b2 = B.hermitian_dot(B);
-	CAPTURE(N_rhs);
-	CAPTURE(stopping_criterion);
-	CAPTURE(iterations);
-	for(int i=0; i<N_rhs; ++i) {
-		double residual = sqrt(r2(i,i).real()/b2(i,i).real());
-		CAPTURE(i);
 		CAPTURE(residual);
 		REQUIRE( residual < 2 * stopping_criterion );		
 	}

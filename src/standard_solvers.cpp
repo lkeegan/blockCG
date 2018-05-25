@@ -1,35 +1,35 @@
-#include "inverters.hpp"
-#include <iostream>
+#include "standard_solvers.hpp"
 
 // CG inversion of A x = b
 int CG (fermion_field& x, const fermion_field& b, double eps) {	
-	double alpha, beta;
 	// initial guess x = 0
 	x.setZero();
-	fermion_field ap (x);
+	fermion_field t (x);
+	fermion_field p (x);
 	fermion_field r (b);
-	fermion_field p (b);
 	double r2 = r.dot(r);
 	double r2_old;
+	double alpha = r2;
+	double beta;
 	int iter = 0;
 	eps *= sqrt(r2);
 	// do while |Ax - b| > |b| eps
 	while (sqrt(r2) > eps)
 	{
-		// ap = A p
-		dirac_op (ap, p);
+		// p = p alpha + r
+		p.rescale_add(alpha, r, 1.0);
+		// t = A p
+		dirac_op (t, p);
 		++iter;
-		// beta = -r.r / p.ap
-		beta = -r2 / p.dot(ap);
-		// r += beta ap
-		r.add(ap, beta);
+		// beta = r.r / p.t
+		beta = r2 / p.dot(t);
+		// r -= t beta
+		r.add(t, -beta);
+		// x += p beta
+		x.add(p, beta);
 		r2_old = r2;
 		r2 = r.dot(r);
 		alpha = r2 / r2_old;
-		// x += -beta * p
-		x.add(p, -beta);
-		// p = alpha p + r
-		p.rescale_add(alpha, r, 1.0);
 	}
 	return iter;
 }

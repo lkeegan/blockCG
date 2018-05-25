@@ -27,10 +27,10 @@ target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 include_directories(inc)
 
 #set common source files
-set (SRCS ${SRCS} src/inverters.cpp)
+set (SRCS ${SRCS} src/standard_solvers.cpp)
 
 # Make unit test executable
-set (TEST_SRCS ${SRCS} test/inverters.cpp)
+set (TEST_SRCS ${SRCS} test/standard_solvers.cpp test/block_solvers.cpp)
 
 add_executable(tests test/main.cpp ${TEST_SRCS})
 target_link_libraries(tests Catch)
