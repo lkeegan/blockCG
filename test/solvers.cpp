@@ -6,19 +6,19 @@
 
 // size of "lattice"
 int V = 128;
-// approx condition number of "Dirac operator"
-double condition_number = 100;
+// mass is inversely related to condition number of "Dirac operator"
+double mass = 0.1;
 // stopping criterion for solvers
 double stopping_criterion = 1.e-10;
 // number of RHS vectors for block solverss
 constexpr int N_rhs = 3;
 // shifts for shifted solvers
-std::vector<double> shifts = {0.01, 0.02, 0.18};
+std::vector<double> shifts = {0.01, 0.10};
 int N_shifts = static_cast<int>(shifts.size());
 
 TEST_CASE( "CG", "[standard_solvers]") {
 	fermion_field x(V), b(V), Ax(V);
-	dirac_op D(condition_number);
+	dirac_op D(V, mass);
 	b.setRandom();
 	int iterations = CG(x, b, D, stopping_criterion);
 	D.op(Ax, x);
@@ -32,7 +32,7 @@ TEST_CASE( "CG", "[standard_solvers]") {
 
 TEST_CASE( "SCG", "[standard_solvers]") {
 	fermion_field b(V), Ax(V);
-	dirac_op D(condition_number);
+	dirac_op D(V, mass);
 	std::vector<fermion_field> x (N_shifts, b);
 	b.setRandom();
 	int iterations = SCG(x, b, D, shifts, stopping_criterion);
@@ -52,7 +52,7 @@ TEST_CASE( "SCG", "[standard_solvers]") {
 
 TEST_CASE( "BCG", "[block_solvers]") {
 	block_fermion_field<N_rhs> X(V), B(V), AX(V);
-	dirac_op D(condition_number);
+	dirac_op D(V, mass);
 	B.setRandom();
 	int iterations = BCG(X, B, D, stopping_criterion);
 	D.op(AX, X);
@@ -72,7 +72,7 @@ TEST_CASE( "BCG", "[block_solvers]") {
 
 TEST_CASE( "BCGrQ", "[block_solvers]") {
 	block_fermion_field<N_rhs> X(V), B(V), AX(V);
-	dirac_op D(condition_number);
+	dirac_op D(V, mass);
 	B.setRandom();
 	int iterations = BCGrQ(X, B, D, stopping_criterion);
 	D.op(AX, X);
@@ -92,7 +92,7 @@ TEST_CASE( "BCGrQ", "[block_solvers]") {
 
 TEST_CASE( "SBCGrQ", "[block_solvers]") {
 	block_fermion_field<N_rhs> B(V), AX(V);
-	dirac_op D(condition_number);
+	dirac_op D(V, mass);
 	std::vector< block_fermion_field<N_rhs> > X (N_shifts, B);
 	B.setRandom();
 	int iterations = SBCGrQ(X, B, D, shifts, stopping_criterion);

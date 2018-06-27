@@ -10,7 +10,7 @@ double stopping_criterion = 1.e-10;
 // number of RHS vectors for block solvers
 constexpr int N_rhs = 12;
 // shifts for shifted solvers
-std::vector<double> shifts = {0.0001, 0.001, 0.01, 0.1};
+std::vector<double> shifts = {0, 0.0001, 0.001, 0.01, 0.1};
 int N_shifts = static_cast<int>(shifts.size());
 
 int main(int argc, char *argv[]) {
