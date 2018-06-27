@@ -3,8 +3,8 @@
 
 // Define data structure for block fermion fields:
 
-// "fermion" - 12-component complex vector
-// "block_fermion<N_rhs>" - (12 x N_rhs) complex matrix, i.e. N_rhs x "fermion" vectors 
+// "fermion" - N_f-component vector of complex doubles
+// "block_fermion<N_rhs>" - (N_f x N_rhs) complex matrix, i.e. N_rhs x "fermion" vectors 
 // "block_matrix<N_rhs>" - (N_rhs x N_rhs) complex matrix
 
 // "fermion_field(V)" - a V-component field of "fermion"
@@ -15,9 +15,9 @@
 #include "Eigen3/Eigen/Dense"
 #include "Eigen3/Eigen/StdVector"
 
-constexpr int N_fermion_dof = 12;
+constexpr int N_f = 3;
 template <int N_rhs>
-using block_fermion = Eigen::Matrix<std::complex<double>, N_fermion_dof, N_rhs>;
+using block_fermion = Eigen::Matrix<std::complex<double>, N_f, N_rhs>;
 typedef block_fermion<1> fermion;
 template <int N_rhs>
 using block_matrix = Eigen::Matrix<std::complex<double>, N_rhs, N_rhs>;
@@ -75,21 +75,6 @@ public:
 		}
 	    return *this;
 	}
-	template<typename T_lhs_arg, typename T_rhs_arg>
-	block_fermion_field<N_rhs>& upper_triangular_rescale_add(const T_lhs_arg& lhs_multiplier, const block_fermion_field<N_rhs>& rhs, const T_rhs_arg& rhs_multiplier)
-	{
-		// this <- this * lhs_multipler + rhs * rhs_multiplier [for upper triangular lhs_multiplier]
-		for(int ix=0; ix<V; ++ix) {
-			for(int i=N_rhs-1; i>=0; --i) {
-				data_[ix].col(i) *= lhs_multiplier(i,i);
-				for(int j=i-1; j>=0; --j) {
-					data_[ix].col(i) += rhs_multiplier(j,i) * data_[ix].col(j);
-				}
-				data_[ix].col(i) += rhs[ix].col(i);
-			}
-		}
-		return *this;
-	}
 	void setZero() {
 		for(int ix=0; ix<V; ++ix) {
 			data_[ix].setZero();
@@ -106,7 +91,7 @@ public:
 		for(int ix=0; ix<V; ++ix) {
 			sum += data_[ix].dot(rhs[ix]).real();
 		}
-		return sum;		
+		return sum;
 	}
 	block_matrix<N_rhs> hermitian_dot(const block_fermion_field<N_rhs>& rhs) const {
 		// construct lower-triangular part of matrix
@@ -120,8 +105,8 @@ public:
 			}
 		}
 		// reconstruct upper triangular part from conjugate of lower triangular elements
-		for(int i=0; i<N_rhs; ++i) {
-			for(int j=0; j<=i; ++j) {
+		for(int i=1; i<N_rhs; ++i) {
+			for(int j=0; j<i; ++j) {
 				R(j, i) = std::conj(R(i, j));
 			}
 		}

@@ -16,11 +16,13 @@ addons:
 script:
   - mkdir Debug
   - cd Debug
-  - cmake -DCMAKE_BUILD_TYPE=Debug .. && make tests -j4
+  - cmake -DCMAKE_BUILD_TYPE=Debug .. && make -j4
+  - ./benchmark 10 10
   - cd ../
   - mkdir Release
   - cd Release
-  - cmake -DCMAKE_BUILD_TYPE=Release .. && make tests -j4
+  - cmake -DCMAKE_BUILD_TYPE=Release .. && make -j4
+  - ./benchmark 100 100
   - cd ../
 
 after_success:
