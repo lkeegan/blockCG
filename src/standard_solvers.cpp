@@ -1,6 +1,6 @@
+#include <algorithm> // only used for std::is_sorted to check input SCG shifts
 #include "standard_solvers.hpp"
 
-// CG inversion of A x = b
 int CG (fermion_field& x, const fermion_field& b, const dirac_op& D, 
 		double eps, int max_iterations) {	
 	// initial guess x = 0
@@ -9,7 +9,6 @@ int CG (fermion_field& x, const fermion_field& b, const dirac_op& D,
 	fermion_field p (b);
 	fermion_field r (b);
 	double r2 = r.dot(r);
-	double alpha = r2;
 	int iter = 0;
 	eps *= sqrt(r2);
 	// do while |Ax - b| > |b| eps
@@ -25,7 +24,7 @@ int CG (fermion_field& x, const fermion_field& b, const dirac_op& D,
 		// alpha = r.r / r_old.r_old
 		double r2_old = r2;
 		r2 = r.dot(r);
-		alpha = r2 / r2_old;
+		double alpha = r2 / r2_old;
 		// x += p beta
 		x.add(p, beta);
 		// p = p alpha + r
@@ -34,17 +33,20 @@ int CG (fermion_field& x, const fermion_field& b, const dirac_op& D,
 	return iter;
 }
 
-// SCG inversion of (A + sigma_i) x_i = b
 int SCG (std::vector<fermion_field>& x, const fermion_field& b, const dirac_op& D,
 		 std::vector<double>& sigma, double eps, double eps_shifts, int max_iterations) {
+	// some sanity checks on supplied parameters:
+	assert(sigma.size()==x.size() && "number of shifts does not match number of solution vectors");
+	assert(sigma[0] >= 0.0 && "shifts must be zero or positive");
+	assert(std::is_sorted(sigma.begin(), sigma.end()) && "shifts must be in ascending order");
+
 	int n_shifts = x.size();
 	int n_unconverged_shifts = n_shifts;
-	double beta = 1;
-	double alpha = 0;
+	double beta = 1.0;
+	double alpha = 0.0;
 	std::vector<double> zeta(n_shifts, 1.0);
 	// zeta ratio == zeta_k/zeta_{k-1}
 	std::vector<double> zeta_ratio(n_shifts, 1.0);
-	// initial guess x=0
 	for(int i_shift=0; i_shift<n_shifts; ++i_shift) {
 		x[i_shift].setZero();
 	}
@@ -74,18 +76,18 @@ int SCG (std::vector<fermion_field>& x, const fermion_field& b, const dirac_op& 
 		p[0].rescale_add(alpha, r, 1.0);
 		for(int i_shift=1; i_shift<n_unconverged_shifts; ++i_shift) {
 			// calculate alpha, beta and zeta coefficients for shifted vectors
-			double inv_zeta_ratio = alpha_m1*(beta/beta_m1)*(1.0 - zeta_ratio[i_shift]);
-			inv_zeta_ratio += 1.0 + (sigma[i_shift]-sigma[0])*beta;
+			double inv_zeta_ratio = 1.0 + (sigma[i_shift]-sigma[0])*beta;
+			inv_zeta_ratio += alpha_m1*(beta/beta_m1)*(1.0 - zeta_ratio[i_shift]);
 			zeta_ratio[i_shift] = 1.0 / inv_zeta_ratio;
 			zeta[i_shift] *= zeta_ratio[i_shift];
 			double beta_shift = beta * zeta_ratio[i_shift];
 			double alpha_shift = alpha * zeta_ratio[i_shift] * zeta_ratio[i_shift];
-			// x_i += p_0 beta_i
+			// x^i += p^0 beta^i
 			x[i_shift].add(p[i_shift], beta_shift);		
-			// p_i = p_i alpha_i + r zeta_i
+			// p^i = p^i alpha^i + r zeta^i
 			p[i_shift].rescale_add(alpha_shift, r, zeta[i_shift]);
 		}
-		// if largest shift has converged i.e. normalised residual < eps_shifts, stop updating it
+		// if normalised residual of largest shift < eps_shifts, stop updating it
 		if(sqrt(r2)*zeta[n_unconverged_shifts-1] < eps_shifts) {
 			--n_unconverged_shifts;
 		}		

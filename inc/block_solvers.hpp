@@ -3,7 +3,6 @@
 
 #include "fields.hpp"
 #include "dirac_op.hpp"
-#include <iostream>
 
 // BCG inversion of D X = B
 // stops iterating when |DX^i - B^i| / | B^i | < eps for all vectors i
@@ -33,15 +32,15 @@ int BCG (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, con
 		D.op (T, P);
 		++iter;
 		// beta = (P.T)^-1 (R.R)
-		// use LDL^T Cholesky decomposition to invert the hermitian matrix (P.T)^-1
-		beta = (P.hermitian_dot(T)).ldlt().solve(r2);
+		// use fullPivLu decomposition to invert the hermitian matrix (P.T)^-1
+		beta = (P.hermitian_dot(T)).fullPivLu().solve(r2);
 		// R -= T beta
 		R.add(T, -beta);
 		// X += P beta
 		X.add(P, beta);
 		r2_old = r2;
 		r2 = R.hermitian_dot(R);
-		alpha = r2_old.ldlt().solve(r2);
+		alpha = r2_old.fullPivLu().solve(r2);
 		residual = (r2.diagonal().real().array().sqrt()/residual_norms).maxCoeff();
 	}
 	return iter;
@@ -75,8 +74,8 @@ int BCGrQ (block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B, c
 		D.op (T, P);
 		++iter;
 		// beta = (P.T)^-1 (R.R)
-		// use LDL^T Cholesky decomposition to invert hermitian matrix (P.T)^-1
-		beta = (P.hermitian_dot(T)).ldlt().solve(block_matrix<N_rhs>::Identity());
+		// use fullPivLu decomposition to invert hermitian matrix (P.T)^-1
+		beta = (P.hermitian_dot(T)).fullPivLu().solve(block_matrix<N_rhs>::Identity());
 		// R -= T beta
 		R.add(T, -beta);
 		//{R, alpha} <- QR(R)
@@ -127,9 +126,6 @@ int SBCGrQ(std::vector< block_fermion_field<N_rhs> >& X, const block_fermion_fie
 	// P has one NxVOL block per shift (+unshifted)
 	// P = Q for all shifts
 	std::vector< block_fermion_field<N_rhs> > P(N_shifts+1, Q);
-//	for(int i_shift=0; i_shift<N_shifts+1; ++i_shift) {
-//		P.push_back(Q);
-//	}
 
 	// Shifted matrices:
 	// previous / inverted versions of beta
@@ -140,8 +136,8 @@ int SBCGrQ(std::vector< block_fermion_field<N_rhs> >& X, const block_fermion_fie
 	block_matrix<N_rhs> S_m1 = block_matrix<N_rhs>::Zero();
 	// These are temporary matrices used for each shift
 	block_matrix<N_rhs> tmp_betaC, tmp_Sdag; 
-	// ksi_s are the scale factors related shifted and unshifted residuals
-	// 3-term recurrence so need _k, _k-1, _k-2 for each shift
+	// ksi_s relate shifted and unshifted residuals
+	// 3-term recurrence so need ksi_k, ksi_k-1, ksi_k-2 for each shift
 	// initially ksi_s_m2 = I, ksi_s_m1 = S
 	std::vector< block_matrix<N_rhs>, Eigen::aligned_allocator<block_matrix<N_rhs>> > ksi_s, ksi_s_m1; 
 	std::vector< Eigen::FullPivLU<block_matrix<N_rhs>>, Eigen::aligned_allocator<Eigen::FullPivLU<block_matrix<N_rhs>>> > ksi_s_inv_m1, ksi_s_inv_m2;
@@ -169,7 +165,7 @@ int SBCGrQ(std::vector< block_fermion_field<N_rhs> >& X, const block_fermion_fie
 
 		beta_inv_m1 = beta_inv;
 		beta_inv = P[0].hermitian_dot(AP);
-		// Find inverse of beta_inv via LDLT cholesky decomposition
+		// Find inverse of beta_inv via fullPivLu decomposition
 		// and solving beta beta_inv = I
 		beta = beta_inv.fullPivLu().solve(block_matrix<N_rhs>::Identity());
 		betaC = beta * C;
@@ -178,7 +174,6 @@ int SBCGrQ(std::vector< block_fermion_field<N_rhs> >& X, const block_fermion_fie
 		X[0].add(P[0], betaC);
 
 		//Q -= AP beta
-		//betaC = -beta;
 		Q.add(AP, -beta);
 
 		S_m1 = S;
@@ -194,30 +189,18 @@ int SBCGrQ(std::vector< block_fermion_field<N_rhs> >& X, const block_fermion_fie
 		P[0].rescale_add(S.adjoint().eval(), Q, 1.0);
 
 		// calculate shifted X and P
-		// note X[0] and P[0] are the unshifted ones, so first shift has index 1 in X and P
 		for(int i_shift=0; i_shift<N_unconverged_shifts; ++i_shift) {
 			// calculate shifted coefficients
-			// ksi_s:
 			tmp_betaC = S_m1 * beta_inv_m1 - ksi_s_m1[i_shift] * ksi_s_inv_m2[i_shift].solve(beta_inv_m1);
 			tmp_Sdag = block_matrix<N_rhs>::Identity() + shifts[i_shift] * beta + tmp_betaC * S_m1.adjoint() * beta;
 			ksi_s[i_shift] = S * tmp_Sdag.fullPivLu().solve(ksi_s_m1[i_shift]);
-			// tmp_betaC == "alpha^sigma" in paper:
 			tmp_betaC = beta * S_inv.solve(ksi_s[i_shift]);
-			// tmp_Sdag == "beta^sigma" in paper:
-			//tmp_Sdag = tmp_betaC * ksi_s_m1[i_shift].fullPivLu().solve(beta_inv); //* S.adjoint();
-			//std::cout << "X " << ksi_s_m1[i_shift] << " " << beta_inv << " " << S.adjoint().eval() << std::endl;
 			tmp_Sdag = tmp_betaC * ksi_s_inv_m1[i_shift].solve(beta_inv * S.adjoint());
 			// update shifted X and P
 			// X_s = X_s + P_s tmp_betaC
 			X[i_shift+1].add(P[i_shift+1], tmp_betaC);
 			// P_s <- P_s tmp_Sdag + Q
 			P[i_shift+1].rescale_add(tmp_Sdag, Q, 1.0);
-/*
-std::cout << "C: " << (C - ksi_s[i_shift]).norm() << std::endl;
-std::cout << "betaC: " << (tmp_betaC - betaC).norm() << std::endl;
-std::cout << "Sdag: " << (tmp_Sdag - S.adjoint().eval()).norm() << std::endl;
-std::cout << beta * S_inv.solve(C)* ksi_s_m1[i_shift].fullPivLu().solve(beta_inv) << std::endl;
-*/
 			// update inverse ksi's for next iteration
 			ksi_s_inv_m2[i_shift] = ksi_s_inv_m1[i_shift];
 			ksi_s_m1[i_shift] = ksi_s[i_shift];
@@ -227,34 +210,8 @@ std::cout << beta * S_inv.solve(C)* ksi_s_m1[i_shift].fullPivLu().solve(beta_inv
 				--N_unconverged_shifts;
 			}			
 		}
-		// use maximum over vectors of residuals/b_norm for unshifted solution as stopping crit
-		// assumes that all shifts are positive i.e. better conditioned and converge faster
-		// worst vector should be equal to CG with same eps on that vector, others will be better
+		// use maximum over relative residual of lowest shift as residual
 		residual = (C.rowwise().norm().array()/b_norm).maxCoeff();
-
-/*
-		std::cout << "#SBCGrQ " << iter << "\t" << residual;
-		for(int i_shift=0; i_shift<N_shifts; ++i_shift) {
-			std::cout << "\t" << (ksi_s[i_shift].rowwise().norm().array()/b_norm).maxCoeff();
-		}
-		std::cout << std::endl;
-
-		// check shifted residual for X[1] explicitly
-		// Apply dirac op to P[0]:
-		D.op(AP, X[0]);
-		// do input shift
-		AP.add(X[0], input_shifts[0]);
-		AP -= B;
-		std::cout << "RES0 " << AP.hermitian_dot(AP) << std::endl;
-
-		// check shifted residual for X[1] explicitly
-		// Apply dirac op to P[0]:
-		D.op(AP, X[1]);
-		// do input shift
-		AP.add(X[1], input_shifts[1]);
-		AP -= B;
-		std::cout << "RES1 " << AP.hermitian_dot(AP) << std::endl;
-*/
 	}
 	return iter;
 }

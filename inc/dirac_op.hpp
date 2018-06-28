@@ -3,7 +3,8 @@
 
 #include "fields.hpp"
 
-// Dummy hermitian positive definite "Dirac operator" D that acts on block_fermion fields:
+// Dummy hermitian positive definite "Dirac operator" D that acts on block_fermion fields
+// This is a sparse VxV matrix with condition number ~1/m^2:
 // lhs = (m^2 - DD) rhs
 class dirac_op {
 private:
@@ -27,7 +28,7 @@ public:
 			U[ix].setRandom();
 		}
 	}
-	// "dirac operator" - sparse hermitian positive definite matrix 
+	// "Dirac operator"
 	// lhs = (m^2 - D^2) rhs
 	template <int N_rhs>
 	void op(block_fermion_field<N_rhs>& lhs, const block_fermion_field<N_rhs>& rhs) const {

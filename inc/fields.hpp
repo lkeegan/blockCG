@@ -55,7 +55,18 @@ public:
 
 	// these are some eigen routines for individual vectors or matrices
 	// trivially extended by applying them to each element in the field in turn
-	// this += rhs * rhs_multiplier
+	void setZero() {
+		for(int ix=0; ix<V; ++ix) {
+			data_[ix].setZero();
+		}
+	}
+	void setRandom() {
+		for(int ix=0; ix<V; ++ix) {
+			data_[ix].setRandom();
+		}
+	}
+
+	// this <- this + rhs * rhs_multiplier
 	template<typename Targ>
 	block_fermion_field<N_rhs>& add(const block_fermion_field<N_rhs>& rhs, const Targ& rhs_multiplier)
 	{
@@ -64,6 +75,7 @@ public:
 		}
 	    return *this;
 	}
+	// this <- this * lhs_multiplier + rhs * rhs_multiplier
 	template<typename T_lhs_arg, typename T_rhs_arg>
 	block_fermion_field<N_rhs>& rescale_add(const T_lhs_arg& lhs_multiplier, const block_fermion_field<N_rhs>& rhs, const T_rhs_arg& rhs_multiplier)
 	{
@@ -75,17 +87,8 @@ public:
 		}
 	    return *this;
 	}
-	void setZero() {
-		for(int ix=0; ix<V; ++ix) {
-			data_[ix].setZero();
-		}
-	}
-	void setRandom() {
-		for(int ix=0; ix<V; ++ix) {
-			data_[ix].setRandom();
-		}
-	}
-	//real part of complex conjugate of this dotted with rhs
+	// dot product: returns real part of
+	// (this . rhs)
 	double dot (const block_fermion_field<1>& rhs) const {
 		double sum = 0.0;
 		for(int ix=0; ix<V; ++ix) {
@@ -93,8 +96,10 @@ public:
 		}
 		return sum;
 	}
+	// block dot product, returns hermitian matrix
+	// R_ij = (this_i . rhs_j)
 	block_matrix<N_rhs> hermitian_dot(const block_fermion_field<N_rhs>& rhs) const {
-		// construct lower-triangular part of matrix
+		// construct lower-triangular part of matrix R_ij = [lhs_i^{dagger} rhs_j]
 		block_matrix<N_rhs> R;
 		R.setZero();
 		for(int ix=0; ix<V; ++ix) {
@@ -104,7 +109,7 @@ public:
 				}
 			}
 		}
-		// reconstruct upper triangular part from conjugate of lower triangular elements
+		// reconstruct upper triangular part
 		for(int i=1; i<N_rhs; ++i) {
 			for(int j=0; j<i; ++j) {
 				R(j, i) = std::conj(R(i, j));
@@ -112,8 +117,8 @@ public:
 		}
 		return R;
 	}
-	// In-place Multiply field X on RHS by inverse of triangular matrix R, i.e.
-	// X <- X R^{-1}
+	// In-place RHS multiply by inverse of triangular matrix R, i.e.
+	// this <- this R^{-1}
 	block_fermion_field<N_rhs>& multiply_triangular_inverse_RHS(const block_matrix<N_rhs>& R) {
 		for(int ix=0; ix<V; ++ix) {
 			for(int i=0; i<N_rhs; ++i) {
@@ -125,12 +130,11 @@ public:
 		}
 		return *this;
 	}
+	// Thin QR decomposition: orthogonalises this and returns upper triangular R:
+	// this <- this R^{-1}
 	block_fermion_field<N_rhs>& thinQR(block_matrix<N_rhs>& R) {
-		// Construct R_ij = Q_i^dag Q_j = hermitian, 
-		R = hermitian_dot(*this);
-		// Find upper triangular R such that R^dag R = H (i.e. previous contents of R) = Q^dag Q
-		// i.e. adjoint of cholesky decomposition L matrix: L L^dag = H
-		R = R.llt().matrixL().adjoint();
+		// Construct R 
+		R = hermitian_dot(*this).llt().matrixL().adjoint();
 		// Q <- Q R^-1
 		multiply_triangular_inverse_RHS(R);
 		return *this;

@@ -7,7 +7,7 @@
 // size of "lattice"
 int V = 128;
 // mass is inversely related to condition number of "Dirac operator"
-double mass = 0.1;
+double mass = 0.5;
 // stopping criterion for solvers
 double stopping_criterion = 1.e-10;
 // number of RHS vectors for block solverss

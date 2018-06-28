@@ -5,34 +5,33 @@
 
 // Simple Benchmark code
 
-// stopping criterion for solvers
-double stopping_criterion = 1.e-10;
 // number of RHS vectors for block solvers
 constexpr int N_rhs = 12;
-// shifts for shifted solvers
+// shifts for shifted solver
 std::vector<double> shifts = {0, 0.0001, 0.001, 0.01, 0.1};
 int N_shifts = static_cast<int>(shifts.size());
 
 int main(int argc, char *argv[]) {
 
-    if (argc-1 != 2) {
-        std::cout << "This program requires 2 arguments:" << std::endl;
-        std::cout << "Lattice volume, and Dirac operator mass" << std::endl;
-        std::cout << "e.g. ./benchmark 128 0.01" << std::endl;
+	constexpr int n_args = 3;
+    if (argc-1 != n_args) {
+        std::cout << "This program requires " << n_args << " arguments:" << std::endl;
+        std::cout << "Lattice volume, Dirac operator mass, solver stopping criterion" << std::endl;
+        std::cout << "e.g. ./benchmark 1024 0.01 1e-12" << std::endl;
         return 1;
     }
 
     // initialise dirac op
 	int V = static_cast<int>(atof(argv[1]));
 	double mass = static_cast<double>(atof(argv[2]));
+	double stopping_criterion = static_cast<double>(atof(argv[3]));
 	dirac_op D(V, mass);
 
 	// make random block fermion source vector for SBCGrQ 
 	block_fermion_field<N_rhs> B(V);
 	B.setRandom();
 
-	std::cout << "#Benchmark of SBCGrQ vs SCG solvers - N_rhs = " << N_rhs << std::endl;
-	std::cout << "#V\tmass\tSolver\tIterations\tResiduals" << std::endl;
+	std::cout << "#Benchmark of SBCGrQ vs SCG solvers - N_rhs = " << N_rhs << ", eps=" << stopping_criterion << std::endl;
 
 	// do SCG solve for each RHS separately
 	std::vector<double> resSCG(N_shifts, 0.0);
@@ -56,8 +55,8 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	std::cout << V << "\t" << mass << "\tSCG\t" << iterSCG << "\t\t";
 	// measure and output worst residual for each shift
+	std::cout << "#SCG residuals:\t\t";
 	for(int i_shift=0; i_shift<N_shifts; ++i_shift) {
 		std::cout << resSCG[i_shift] << "\t";
 	}
@@ -67,8 +66,8 @@ int main(int argc, char *argv[]) {
 	block_fermion_field<N_rhs> AX(V);
 	std::vector< block_fermion_field<N_rhs> > X (N_shifts, B);
 	int iterSBCGrQ = N_rhs * SBCGrQ(X, B, D, shifts, stopping_criterion);
-	std::cout << V << "\t" << mass << "\tSBCGrQ\t" << iterSBCGrQ << "\t\t";
 	// measure and output worst residual for each shift
+	std::cout << "#SBCGrQ residuals:\t";
 	block_matrix<N_rhs> b2 = B.hermitian_dot(B);
 	for(int i_shift=0; i_shift<N_shifts; ++i_shift) {
 		double shift = shifts[i_shift];
@@ -79,6 +78,9 @@ int main(int argc, char *argv[]) {
 		std::cout << sqrt((r2.diagonal().real().array()/b2.diagonal().array().real()).maxCoeff()) << "\t";
 	}
 	std::cout << std::endl;
+
+	std::cout << "#V\tmass\tSCG_iterations\tSBCGrQ_iterations" << std::endl;
+	std::cout << V << "\t" << mass << "\t" << iterSCG << "\t\t" << iterSBCGrQ << std::endl;
 
 	return 0;
 }
