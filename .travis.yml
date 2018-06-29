@@ -12,6 +12,7 @@ addons:
   apt:
     packages:
       - lcov
+      - valgrind
 
 script:
   - mkdir Debug
