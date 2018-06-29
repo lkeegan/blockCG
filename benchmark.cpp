@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 			D.op(Ax, x[i_shift]);
 			Ax.add(x[i_shift], shift);
 			Ax -= b;
-			double residual = sqrt( Ax.dot(Ax) / b.dot(b) );
+			double residual = sqrt( Ax.real_dot(Ax) / b.real_dot(b) );
 			if(residual > resSCG[i_shift]) {
 				resSCG[i_shift] = residual;
 			}

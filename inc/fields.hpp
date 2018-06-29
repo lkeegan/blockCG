@@ -89,7 +89,7 @@ public:
 	}
 	// dot product: returns real part of
 	// (this . rhs)
-	double dot (const block_fermion_field<1>& rhs) const {
+	double real_dot (const block_fermion_field<1>& rhs) const {
 		double sum = 0.0;
 		for(int ix=0; ix<V; ++ix) {
 			sum += data_[ix].dot(rhs[ix]).real();

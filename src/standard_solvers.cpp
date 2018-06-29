@@ -8,7 +8,7 @@ int CG (fermion_field& x, const fermion_field& b, const dirac_op& D,
 	fermion_field t (x);
 	fermion_field p (b);
 	fermion_field r (b);
-	double r2 = r.dot(r);
+	double r2 = r.real_dot(r);
 	int iter = 0;
 	eps *= sqrt(r2);
 	// do while |Ax - b| > |b| eps
@@ -18,12 +18,12 @@ int CG (fermion_field& x, const fermion_field& b, const dirac_op& D,
 		D.op (t, p);
 		++iter;
 		// beta = r.r / p.t
-		double beta = r2 / p.dot(t);
+		double beta = r2 / p.real_dot(t);
 		// r -= t beta
 		r.add(t, -beta);
 		// alpha = r.r / r_old.r_old
 		double r2_old = r2;
-		r2 = r.dot(r);
+		r2 = r.real_dot(r);
 		double alpha = r2 / r2_old;
 		// x += p beta
 		x.add(p, beta);
@@ -52,7 +52,7 @@ int SCG (std::vector<fermion_field>& x, const fermion_field& b, const dirac_op& 
 	}
 	std::vector<fermion_field> p(n_shifts, b);
 	fermion_field t(x[0]), r(b);
-	double r2 = r.dot(r);
+	double r2 = r.real_dot(r);
 	int iter = 0;
 	eps *= sqrt(r2);
 	while (sqrt(r2) > eps && iter < max_iterations)
@@ -63,11 +63,11 @@ int SCG (std::vector<fermion_field>& x, const fermion_field& b, const dirac_op& 
 		++iter;
 		// beta = r.r/p_0.t
 		double beta_m1 = beta;
-		beta = r2 / p[0].dot(t);
+		beta = r2 / p[0].real_dot(t);
 		// r -= t beta
 		r.add(t, -beta);
 		double r2_old = r2;
-		r2 = r.dot(r);
+		r2 = r.real_dot(r);
 		double alpha_m1 = alpha;
 		alpha = r2 / r2_old;
 		// x_0 += p_0 beta

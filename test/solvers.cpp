@@ -13,7 +13,7 @@ double stopping_criterion = 1.e-10;
 // number of RHS vectors for block solverss
 constexpr int N_rhs = 3;
 // shifts for shifted solvers
-std::vector<double> shifts = {0.01, 0.10};
+std::vector<double> shifts = {0.0, 0.01, 0.10, 0.10, 0.9};
 int N_shifts = static_cast<int>(shifts.size());
 
 TEST_CASE( "CG", "[standard_solvers]") {
@@ -23,7 +23,7 @@ TEST_CASE( "CG", "[standard_solvers]") {
 	int iterations = CG(x, b, D, stopping_criterion);
 	D.op(Ax, x);
 	Ax -= b;
-	double residual = sqrt( Ax.dot(Ax) / b.dot(b) );
+	double residual = sqrt( Ax.real_dot(Ax) / b.real_dot(b) );
 	CAPTURE(stopping_criterion);
 	CAPTURE(iterations);
 	CAPTURE(residual);
@@ -41,7 +41,7 @@ TEST_CASE( "SCG", "[standard_solvers]") {
 		D.op(Ax, x[i]);
 		Ax.add(x[i], shift);
 		Ax -= b;
-		double residual = sqrt( Ax.dot(Ax) / b.dot(b) );
+		double residual = sqrt( Ax.real_dot(Ax) / b.real_dot(b) );
 		CAPTURE(shift);
 		CAPTURE(stopping_criterion);
 		CAPTURE(iterations);

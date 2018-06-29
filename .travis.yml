@@ -17,12 +17,13 @@ script:
   - mkdir Debug
   - cd Debug
   - cmake -DCMAKE_BUILD_TYPE=Debug .. && make -j4
-  - ./benchmark 10 10
+  - ./benchmark 100 1.0 1e-3
+  - valgrind ./tests -s -d yes
   - cd ../
   - mkdir Release
   - cd Release
   - cmake -DCMAKE_BUILD_TYPE=Release .. && make -j4
-  - ./benchmark 100 100
+  - ./benchmark 100 0.1 1e-10
   - cd ../
 
 after_success:
