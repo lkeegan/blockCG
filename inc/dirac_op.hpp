@@ -3,7 +3,7 @@
 
 #include "fields.hpp"
 
-// Dummy hermitian positive definite "Dirac operator" D that acts on block_fermion fields
+// A simple hermitian positive definite "Dirac operator" D that acts on block_fermion fields
 // This is a sparse VxV matrix with condition number ~1/m^2:
 // lhs = (m^2 - DD) rhs
 class dirac_op {
@@ -23,7 +23,7 @@ public:
 	int V;
 	double mass;
 	explicit dirac_op (int V, double mass = 0.1) : U(V), V(V), mass(mass) {
-		// generate random N_fxN_f complex matrices as gauge links U
+		// generate random N_fxN_f complex matrices as "gauge links" U
 		for(int ix=0; ix<V; ++ix) {
 			U[ix].setRandom();
 		}

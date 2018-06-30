@@ -26,8 +26,5 @@ set (TEST_SRCS ${SRCS} test/solvers.cpp)
 add_executable(tests test/main.cpp ${TEST_SRCS})
 target_link_libraries(tests Catch)
 
-# enable_testing()
-add_test(NAME Addition COMMAND tests)
-
-# make running the unit tests part of the build, so failed test = failed build
+# make running the test executable part of the build, so failed test = failed build
 add_custom_command(TARGET tests POST_BUILD COMMAND tests -s -d yes)

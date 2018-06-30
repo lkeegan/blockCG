@@ -24,7 +24,7 @@ using block_matrix = Eigen::Matrix<std::complex<double>, N_rhs, N_rhs>;
 
 template<int N_rhs> class block_fermion_field {
 protected:
-	std::vector<block_fermion<N_rhs>, Eigen::aligned_allocator<block_fermion<N_rhs>>> data_;
+	std::vector< block_fermion<N_rhs>, Eigen::aligned_allocator<block_fermion<N_rhs>> > data_;
 
 public:
 	int V;
@@ -32,14 +32,16 @@ public:
 	explicit block_fermion_field (int V) : V(V) {
 		data_.resize(V);
 	}
-
-	block_fermion_field<N_rhs>& operator=(const block_fermion_field<N_rhs>& rhs) {
-		V = rhs.V;
-		data_.resize(V);
+	// [i] operator returns data with index i
+	block_fermion<N_rhs>& operator[](int i) { return data_[i]; }
+	const block_fermion<N_rhs>& operator[](int i) const { return data_[i]; }
+	// can add or subtract a field
+	block_fermion_field<N_rhs>& operator+=(const block_fermion_field<N_rhs>& rhs)
+	{
 		for(int ix=0; ix<V; ++ix) {
-			data_[ix] = rhs[ix];
+			data_[ix] += rhs[ix];
 		}
-		return *this;
+	    return *this;
 	}
 	block_fermion_field<N_rhs>& operator-=(const block_fermion_field<N_rhs>& rhs)
 	{
@@ -49,12 +51,7 @@ public:
 	    return *this;
 	}
 
-	// [i] operator returns data with index i
-	block_fermion<N_rhs>& operator[](int i) { return data_[i]; }
-	const block_fermion<N_rhs>& operator[](int i) const { return data_[i]; }
-
-	// these are some eigen routines for individual vectors or matrices
-	// trivially extended by applying them to each element in the field in turn
+	// eigen routines trivially extended by applying them to each element in the field in turn
 	void setZero() {
 		for(int ix=0; ix<V; ++ix) {
 			data_[ix].setZero();
@@ -66,6 +63,7 @@ public:
 		}
 	}
 
+	// some other useful routines for manipulating fields:
 	// this <- this + rhs * rhs_multiplier
 	template<typename Targ>
 	block_fermion_field<N_rhs>& add(const block_fermion_field<N_rhs>& rhs, const Targ& rhs_multiplier)
@@ -87,7 +85,7 @@ public:
 		}
 	    return *this;
 	}
-	// dot product: returns real part of
+	// dot product for fermion_field: returns real part of
 	// (this . rhs)
 	double real_dot (const block_fermion_field<1>& rhs) const {
 		double sum = 0.0;
@@ -96,10 +94,11 @@ public:
 		}
 		return sum;
 	}
-	// block dot product, returns hermitian matrix
-	// R_ij = (this_i . rhs_j)
+	// dot product for block_fermion_field, constructs and returns matrix
+	// R_ij = this_i . rhs_j
+	// assuming that this matrix is hermitian
 	block_matrix<N_rhs> hermitian_dot(const block_fermion_field<N_rhs>& rhs) const {
-		// construct lower-triangular part of matrix R_ij = [lhs_i^{dagger} rhs_j]
+		// construct lower-triangular part of matrix R_ij = this_i . rhs_j
 		block_matrix<N_rhs> R;
 		R.setZero();
 		for(int ix=0; ix<V; ++ix) {
@@ -117,9 +116,9 @@ public:
 		}
 		return R;
 	}
-	// In-place RHS multiply by inverse of triangular matrix R, i.e.
+	// In-place RHS multiply by inverse of upper triangular matrix R
 	// this <- this R^{-1}
-	block_fermion_field<N_rhs>& multiply_triangular_inverse_RHS(const block_matrix<N_rhs>& R) {
+	block_fermion_field<N_rhs>& multiply_upper_triangular_inverse_RHS(const block_matrix<N_rhs>& R) {
 		for(int ix=0; ix<V; ++ix) {
 			for(int i=0; i<N_rhs; ++i) {
 				for(int j=0; j<i; ++j) {
@@ -130,16 +129,16 @@ public:
 		}
 		return *this;
 	}
-	// Thin QR decomposition: orthogonalises this and returns upper triangular R:
+	// Thin QR decomposition: finds upper triangular matrix R and does
 	// this <- this R^{-1}
+	// such that this is orthonormal
 	block_fermion_field<N_rhs>& thinQR(block_matrix<N_rhs>& R) {
-		// Construct R 
+		// Construct R using Cholesky decomposition
 		R = hermitian_dot(*this).llt().matrixL().adjoint();
 		// Q <- Q R^-1
-		multiply_triangular_inverse_RHS(R);
+		multiply_upper_triangular_inverse_RHS(R);
 		return *this;
 	}
-
 };
 typedef block_fermion_field<1> fermion_field;
 

@@ -45,8 +45,7 @@ int SCG (std::vector<fermion_field>& x, const fermion_field& b, const dirac_op& 
 	double beta = 1.0;
 	double alpha = 0.0;
 	std::vector<double> zeta(n_shifts, 1.0);
-	// zeta ratio == zeta_k/zeta_{k-1}
-	std::vector<double> zeta_ratio(n_shifts, 1.0);
+	std::vector<double> theta(n_shifts, 1.0); // theta_k == zeta_k/zeta_{k-1}
 	for(int i_shift=0; i_shift<n_shifts; ++i_shift) {
 		x[i_shift].setZero();
 	}
@@ -62,26 +61,26 @@ int SCG (std::vector<fermion_field>& x, const fermion_field& b, const dirac_op& 
 		t.add(p[0], sigma[0]);
 		++iter;
 		// beta = r.r/p_0.t
-		double beta_m1 = beta;
+		double beta_old = beta;
 		beta = r2 / p[0].real_dot(t);
 		// r -= t beta
 		r.add(t, -beta);
 		double r2_old = r2;
 		r2 = r.real_dot(r);
-		double alpha_m1 = alpha;
+		double alpha_old = alpha;
 		alpha = r2 / r2_old;
 		// x_0 += p_0 beta
 		x[0].add(p[0], beta);
 		// p_0 = p_0 alpha + r
 		p[0].rescale_add(alpha, r, 1.0);
-		for(int i_shift=1; i_shift<n_unconverged_shifts; ++i_shift) {
+		for(int i_shift=n_unconverged_shifts-1; i_shift>0; --i_shift) {
 			// calculate alpha, beta and zeta coefficients for shifted vectors
-			double inv_zeta_ratio = 1.0 + (sigma[i_shift]-sigma[0])*beta;
-			inv_zeta_ratio += alpha_m1*(beta/beta_m1)*(1.0 - zeta_ratio[i_shift]);
-			zeta_ratio[i_shift] = 1.0 / inv_zeta_ratio;
-			zeta[i_shift] *= zeta_ratio[i_shift];
-			double beta_shift = beta * zeta_ratio[i_shift];
-			double alpha_shift = alpha * zeta_ratio[i_shift] * zeta_ratio[i_shift];
+			double inv_theta = 1.0 + (sigma[i_shift]-sigma[0])*beta;
+			inv_theta += alpha_old*(beta/beta_old)*(1.0 - theta[i_shift]);
+			theta[i_shift] = 1.0 / inv_theta;
+			zeta[i_shift] *= theta[i_shift];
+			double beta_shift = beta * theta[i_shift];
+			double alpha_shift = alpha * theta[i_shift] * theta[i_shift];
 			// x^i += p^0 beta^i
 			x[i_shift].add(p[i_shift], beta_shift);		
 			// p^i = p^i alpha^i + r zeta^i
