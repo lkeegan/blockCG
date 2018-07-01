@@ -7,7 +7,6 @@ Block     | Multishift Block | Standard
 --------- | ---------------- | --------
  BCG      | SBCGrQ           | CG
  BCGrQ    |                  | SCG
- ...      |                  |
 
 ## Use
 To compile and run the tests in debug mode to check everything is working:
@@ -23,6 +22,9 @@ mkdir Release
 cd Release
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make benchmark
-./benchmark 500 0.01
+./benchmark 500 0.01 1e-12
 ```
-Where 500 is the "lattice volume", proportional to the size of the sparse matrix, and 0.01 is the "mass" - the smaller this number is the more ill-conditioned the matrix should be.
+where
+- 500 is the "lattice volume": proportional to the size of the sparse matrix
+- 0.01 is the "mass": inversely related to the condition number of the matrix
+- 1e-12 is the stopping criterion for the relative residual.
