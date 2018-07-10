@@ -1,5 +1,5 @@
 # blockCG [![Build Status](https://travis-ci.org/lkeegan/blockCG.svg?branch=master)](https://travis-ci.org/lkeegan/blockCG) [![codecov](https://codecov.io/gh/lkeegan/blockCG/branch/master/graph/badge.svg)](https://codecov.io/gh/lkeegan/blockCG)
-Reference implementations of several Block Conjugate-Gradient iterative solvers in C++, including the SBCGrQ multi-shift block CG solver. The block solvers are implemented in [inc/block_solvers.hpp](inc/block_solvers.hpp), with some simple examples of their use in [test/block_solvers.cpp](test/block_solvers.cpp).
+Reference implementations of several Block Conjugate-Gradient iterative solvers in C++, including the SBCGrQ multi-shift block CG solver. The block solvers are implemented in [inc/block_solvers.hpp](inc/block_solvers.hpp), with some simple examples of their use in [test/solvers.cpp](test/solvers.cpp) and [benchmark.cpp](benchmark.cpp).
 
 Block solvers are a variant of iterative Krylov solvers that act on multiple RHS vectors, and can converge significantly faster than standard solvers. For more details of the solvers implemented here, along with references to the original formulations, see the [documentation](doc/blockCG.pdf).
 
