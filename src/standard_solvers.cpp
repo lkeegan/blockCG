@@ -15,18 +15,18 @@ int CG(fermion_field& x, const fermion_field& b, const dirac_op& D, double eps,
     // t = A p
     D.op(t, p);
     ++iter;
-    // beta = r.r / p.t
-    double beta = r2 / p.real_dot(t);
-    // r -= t beta
-    r.add(t, -beta);
-    // alpha = r.r / r_old.r_old
+    // alpha = r.r / p.t
+    double alpha = r2 / p.real_dot(t);
+    // r -= t alpha
+    r.add(t, -alpha);
+    // beta = r.r / r_old.r_old
     double r2_old = r2;
     r2 = r.real_dot(r);
-    double alpha = r2 / r2_old;
-    // x += p beta
-    x.add(p, beta);
-    // p = p alpha + r
-    p.rescale_add(alpha, r, 1.0);
+    double beta = r2 / r2_old;
+    // x += p alpha
+    x.add(p, alpha);
+    // p = p beta + r
+    p.rescale_add(beta, r, 1.0);
   }
   return iter;
 }
@@ -43,8 +43,8 @@ int SCG(std::vector<fermion_field>& x, const fermion_field& b,
 
   int n_shifts = x.size();
   int n_unconverged_shifts = n_shifts;
-  double beta = 1.0;
-  double alpha = 0.0;
+  double alpha = 1.0;
+  double beta = 0.0;
   std::vector<double> zeta(n_shifts, 1.0);
   std::vector<double> theta(n_shifts, 1.0);  // theta_k == zeta_k/zeta_{k-1}
   for (int i_shift = 0; i_shift < n_shifts; ++i_shift) {
@@ -60,31 +60,31 @@ int SCG(std::vector<fermion_field>& x, const fermion_field& b,
     D.op(t, p[0]);
     t.add(p[0], sigma[0]);
     ++iter;
-    // beta = r.r/p_0.t
-    double beta_old = beta;
-    beta = r2 / p[0].real_dot(t);
-    // r -= t beta
-    r.add(t, -beta);
+    // alpha = r.r/p_0.t
+    double alpha_old = alpha;
+    alpha = r2 / p[0].real_dot(t);
+    // r -= t alpha
+    r.add(t, -alpha);
     double r2_old = r2;
     r2 = r.real_dot(r);
-    double alpha_old = alpha;
-    alpha = r2 / r2_old;
-    // x_0 += p_0 beta
-    x[0].add(p[0], beta);
-    // p_0 = p_0 alpha + r
-    p[0].rescale_add(alpha, r, 1.0);
+    double beta_old = beta;
+    beta = r2 / r2_old;
+    // x_0 += p_0 alpha
+    x[0].add(p[0], alpha);
+    // p_0 = p_0 beta + r
+    p[0].rescale_add(beta, r, 1.0);
     for (int i_shift = n_unconverged_shifts - 1; i_shift > 0; --i_shift) {
       // calculate alpha, beta and zeta coefficients for shifted vectors
-      double inv_theta = 1.0 + (sigma[i_shift] - sigma[0]) * beta;
-      inv_theta += alpha_old * (beta / beta_old) * (1.0 - theta[i_shift]);
+      double inv_theta = 1.0 + (sigma[i_shift] - sigma[0]) * alpha;
+      inv_theta += beta_old * (alpha / alpha_old) * (1.0 - theta[i_shift]);
       theta[i_shift] = 1.0 / inv_theta;
       zeta[i_shift] *= theta[i_shift];
-      double beta_shift = beta * theta[i_shift];
-      double alpha_shift = alpha * theta[i_shift] * theta[i_shift];
-      // x^i += p^0 beta^i
-      x[i_shift].add(p[i_shift], beta_shift);
-      // p^i = p^i alpha^i + r zeta^i
-      p[i_shift].rescale_add(alpha_shift, r, zeta[i_shift]);
+      double alpha_shift = alpha * theta[i_shift];
+      double beta_shift = beta * theta[i_shift] * theta[i_shift];
+      // x^i += p^0 alpha^i
+      x[i_shift].add(p[i_shift], alpha_shift);
+      // p^i = p^i beta^i + r zeta^i
+      p[i_shift].rescale_add(beta_shift, r, zeta[i_shift]);
     }
     // if normalised residual of largest shift < eps_shifts, stop updating it
     if (sqrt(r2) * zeta[n_unconverged_shifts - 1] < eps_shifts) {

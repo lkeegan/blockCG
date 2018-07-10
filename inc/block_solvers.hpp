@@ -13,12 +13,9 @@ int BCG(block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B,
   // initial guess x = 0
   X.setZero();
   block_fermion_field<N_rhs> T(X);
-  block_fermion_field<N_rhs> P(B);
-  block_fermion_field<N_rhs> R(B);
+  block_fermion_field<N_rhs> P(B), R(B);
   block_matrix<N_rhs> r2 = R.hermitian_dot(R);
-  block_matrix<N_rhs> alpha = r2;
-  block_matrix<N_rhs> beta;
-  block_matrix<N_rhs> r2_old;
+  block_matrix<N_rhs> alpha, beta, r2_old;
   Eigen::Array<double, N_rhs, 1> residual_norms =
       r2.diagonal().real().array().sqrt();
   double residual = 1.0;
@@ -29,18 +26,18 @@ int BCG(block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B,
     // T = A P
     D.op(T, P);
     ++iter;
-    // beta = (P.T)^-1 (R.R)
+    // alpha = (P.T)^-1 (R.R)
     // use fullPivLu decomposition to invert the hermitian matrix (P.T)^-1
-    beta = (P.hermitian_dot(T)).fullPivLu().solve(r2);
-    // R -= T beta
-    R.add(T, -beta);
+    alpha = (P.hermitian_dot(T)).fullPivLu().solve(r2);
+    // R -= T alpha
+    R.add(T, -alpha);
     r2_old = r2;
     r2 = R.hermitian_dot(R);
-    alpha = r2_old.fullPivLu().solve(r2);
-    // X += P beta
-    X.add(P, beta);
-    // P = P alpha + R
-    P.rescale_add(alpha, R, 1.0);
+    beta = r2_old.fullPivLu().solve(r2);
+    // X += P alpha
+    X.add(P, alpha);
+    // P = P beta + R
+    P.rescale_add(beta, R, 1.0);
     residual =
         (r2.diagonal().real().array().sqrt() / residual_norms).maxCoeff();
   }
@@ -55,11 +52,11 @@ int BCGrQ(block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B,
           const dirac_op& D, double eps = 1.e-15, int max_iterations = 1e6) {
   // initial guess x = 0
   X.setZero();
-  block_fermion_field<N_rhs> T(X), R(B);
-  block_matrix<N_rhs> alpha, beta, delta;
-  // {R, delta} <- QR(R)
-  R.thinQR(delta);
-  block_fermion_field<N_rhs> P(R);
+  block_fermion_field<N_rhs> T(X), Q(B);
+  block_matrix<N_rhs> alpha, rho, delta;
+  // {Q, delta} <- QR(R)
+  Q.thinQR(delta);
+  block_fermion_field<N_rhs> P(Q);
   // |residual_i| = sqrt(\sum_j R_i^dag R_j) = sqrt(\sum_j delta_ij)
   Eigen::Array<double, N_rhs, 1> residual_norms =
       delta.rowwise().norm().array();
@@ -70,19 +67,19 @@ int BCGrQ(block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B,
     // T = A P
     D.op(T, P);
     ++iter;
-    // beta = (P.T)^-1 (R.R)
+    // alpha = (P.T)^-1 (R.R)
     // use fullPivLu decomposition to invert hermitian matrix (P.T)^-1
-    beta =
+    alpha =
         (P.hermitian_dot(T)).fullPivLu().solve(block_matrix<N_rhs>::Identity());
-    // R -= T beta
-    R.add(T, -beta);
-    //{R, alpha} <- QR(R)
-    R.thinQR(alpha);
-    // X += P beta delta
-    X.add(P, beta * delta);
-    // P = P alpha^{\dagger} + R [where alpha^{\dagger} is upper triangular]
-    P.rescale_add(alpha.adjoint().eval(), R, 1.0);
-    delta = alpha * delta;
+    // Q -= T alpha
+    Q.add(T, -alpha);
+    //{Q, rho} <- QR(Q)
+    Q.thinQR(rho);
+    // X += P alpha delta
+    X.add(P, alpha * delta);
+    // P = P rho^{\dagger} + Q [where alpha^{\dagger} is upper triangular]
+    P.rescale_add(rho.adjoint(), Q, 1.0);
+    delta = rho * delta;
     residual = (delta.rowwise().norm().array() / residual_norms).maxCoeff();
   }
   return iter;
@@ -107,22 +104,22 @@ int SBCGrQ(std::vector<block_fermion_field<N_rhs>>& X,
   int n_unconverged_shifts = n_shifts;
 
   block_matrix<N_rhs> Identity = block_matrix<N_rhs>::Identity();
-  block_matrix<N_rhs> alpha, beta, delta;
-  block_matrix<N_rhs> alpha_old, beta_inv_old, beta_inv(Identity);
-  block_fermion_field<N_rhs> T(B), R(B);
+  block_matrix<N_rhs> alpha, rho, delta;
+  block_matrix<N_rhs> alpha_inv(Identity), alpha_inv_old, rho_old;
+  block_fermion_field<N_rhs> T(B), Q(B);
   // start from X=0 initial guess
   for (int i_shift = 0; i_shift < n_shifts; ++i_shift) {
     X[i_shift].setZero();
   }
-  // {R, delta} <- QR(R)
-  R.thinQR(delta);
-  alpha = delta;
-  std::vector<block_fermion_field<N_rhs>> P(n_shifts, R);
+  // {Q, delta} <- QR(Q)
+  Q.thinQR(delta);
+  rho = delta;
+  std::vector<block_fermion_field<N_rhs>> P(n_shifts, Q);
 
   // matrices for shifted residuals
-  block_matrix<N_rhs> theta_s_inv;
+  block_matrix<N_rhs> beta_s_inv;
   using bm_alloc = Eigen::aligned_allocator<block_matrix<N_rhs>>;
-  std::vector<block_matrix<N_rhs>, bm_alloc> theta_s(n_shifts, Identity);
+  std::vector<block_matrix<N_rhs>, bm_alloc> alpha_s(n_shifts, Identity);
   std::vector<block_matrix<N_rhs>, bm_alloc> beta_s(n_shifts, Identity);
 
   // main loop
@@ -139,46 +136,45 @@ int SBCGrQ(std::vector<block_fermion_field<N_rhs>>& X,
     T.add(P[0], sigma[0]);
     ++iter;
 
-    beta_inv_old = beta_inv;
-    beta_inv = P[0].hermitian_dot(T);
-    // Find inverse of beta_inv via fullPivLu decomposition
-    beta = beta_inv.fullPivLu().solve(Identity);
+    alpha_inv_old = alpha_inv;
+    alpha_inv = P[0].hermitian_dot(T);
+    // Find inverse of alpha^{-1} via fullPivLu decomposition
+    alpha = alpha_inv.fullPivLu().solve(Identity);
 
-    // X[0] = X[0] + P[0] beta delta
-    X[0].add(P[0], beta * delta);
+    // X[0] = X[0] + P[0] alpha delta
+    X[0].add(P[0], alpha * delta);
 
-    // R -= T beta
-    R.add(T, -beta);
+    // Q -= T alpha
+    Q.add(T, -alpha);
 
-    alpha_old = alpha;
+    rho_old = rho;
     // in-place thinQR decomposition of residuals matrix Q
-    R.thinQR(alpha);
-    delta = alpha * delta;
+    Q.thinQR(rho);
+    delta = rho * delta;
     // use maximum over relative residual of lowest shift as residual
     residual = (delta.rowwise().norm().array() / b_norm).maxCoeff();
 
-    // P <- P S^dag + R
-    P[0].rescale_add(alpha.adjoint(), R, 1.0);
+    // P <- P S^dag + Q
+    P[0].rescale_add(rho.adjoint(), Q, 1.0);
 
     // calculate shifted X and P
     for (int i_shift = n_unconverged_shifts - 1; i_shift > 0; --i_shift) {
       // calculate shifted coefficients
-      theta_s_inv = beta_inv + (sigma[i_shift] - sigma[0]) * Identity +
-                    alpha_old * (Identity - beta_inv_old * theta_s[i_shift]) *
-                        beta_inv_old * alpha_old.adjoint();
-      theta_s[i_shift] = theta_s_inv.fullPivLu().solve(Identity);
-      beta_s[i_shift] =
-          theta_s[i_shift] * alpha_old * beta_inv_old * beta_s[i_shift];
+      beta_s_inv = Identity + (sigma[i_shift] - sigma[0]) * alpha +
+                   alpha * rho_old * alpha_inv_old *
+                       (Identity - beta_s[i_shift]) * rho_old.adjoint();
+      beta_s[i_shift] = beta_s_inv.fullPivLu().solve(Identity);
+      alpha_s[i_shift] =
+          beta_s[i_shift] * alpha * rho_old * alpha_inv_old * alpha_s[i_shift];
       double residual_shift =
-          ((alpha * beta_inv * beta_s[i_shift]).rowwise().norm().array() /
+          ((rho * alpha_inv * alpha_s[i_shift]).rowwise().norm().array() /
            b_norm)
               .maxCoeff();
       // update shifted X and P
       // X_s = X_s + P_s tmp_betaC
-      X[i_shift].add(P[i_shift], beta_s[i_shift]);
+      X[i_shift].add(P[i_shift], alpha_s[i_shift]);
       // P_s <- P_s tmp_Sdag + R
-      P[i_shift].rescale_add(theta_s[i_shift] * beta_inv * alpha.adjoint(), R,
-                             1.0);
+      P[i_shift].rescale_add(beta_s[i_shift] * rho.adjoint(), Q, 1.0);
       // if shift has converged stop updating it
       if (residual_shift < eps_shifts) {
         --n_unconverged_shifts;
@@ -187,5 +183,4 @@ int SBCGrQ(std::vector<block_fermion_field<N_rhs>>& X,
   }
   return iter;
 }
-
-#endif  // LKEEGAN_BLOCKCG_INVERTERS_H
+#endif  // LKEEGAN_BLOCKCG_BLOCK_SOLVERS_H
