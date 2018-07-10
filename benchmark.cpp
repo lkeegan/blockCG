@@ -1,4 +1,3 @@
-#include <chrono>
 #include <iostream>
 #include "block_solvers.hpp"
 #include "standard_solvers.hpp"
@@ -33,7 +32,7 @@ int main(int argc, char *argv[]) {
     stopping_criterion_shifts = static_cast<double>(atof(argv[4]));
   }
 
-  // initialise dirac op
+  // initialise sparse "dirac operator" matrix
   dirac_op D(V, mass);
 
   // make random block fermion source vector B
