@@ -30,7 +30,7 @@ int BCG(block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B,
     // use fullPivLu decomposition to invert the hermitian matrix (P.T)^-1
     alpha = (P.hermitian_dot(T)).fullPivLu().solve(r2);
     // R -= T alpha
-    R.add(T, -alpha);
+    R.add(T, (-alpha).eval());
     r2_old = r2;
     r2 = R.hermitian_dot(R);
     beta = r2_old.fullPivLu().solve(r2);
@@ -72,11 +72,11 @@ int BCGrQ(block_fermion_field<N_rhs>& X, const block_fermion_field<N_rhs>& B,
     alpha =
         (P.hermitian_dot(T)).fullPivLu().solve(block_matrix<N_rhs>::Identity());
     // Q -= T alpha
-    Q.add(T, -alpha);
+    Q.add(T, (-alpha).eval());
     //{Q, rho} <- QR(Q)
     Q.thinQR(rho);
     // X += P alpha delta
-    X.add(P, alpha * delta);
+    X.add(P, (alpha * delta).eval());
     // P = P rho^{\dagger} + Q [where alpha^{\dagger} is upper triangular]
     P.rescale_add(rho.adjoint(), Q, 1.0);
     delta = rho * delta;
@@ -142,10 +142,10 @@ int SBCGrQ(std::vector<block_fermion_field<N_rhs>>& X,
     alpha = alpha_inv.fullPivLu().solve(Identity);
 
     // X[0] = X[0] + P[0] alpha delta
-    X[0].add(P[0], alpha * delta);
+    X[0].add(P[0], (alpha * delta).eval());
 
     // Q -= T alpha
-    Q.add(T, -alpha);
+    Q.add(T, (-alpha).eval());
 
     rho_old = rho;
     // in-place thinQR decomposition of residuals matrix Q
@@ -174,7 +174,7 @@ int SBCGrQ(std::vector<block_fermion_field<N_rhs>>& X,
       // X_s = X_s + P_s tmp_betaC
       X[i_shift].add(P[i_shift], alpha_s[i_shift]);
       // P_s <- P_s tmp_Sdag + R
-      P[i_shift].rescale_add(beta_s[i_shift] * rho.adjoint(), Q, 1.0);
+      P[i_shift].rescale_add((beta_s[i_shift] * rho.adjoint()).eval(), Q, 1.0);
       // if shift has converged stop updating it
       if (residual_shift < eps_shifts) {
         --n_unconverged_shifts;
